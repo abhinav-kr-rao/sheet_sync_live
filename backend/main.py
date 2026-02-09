@@ -107,6 +107,7 @@ def get_sheet_data():
     Returns a list of dictionaries (rows).
     """
     conn = get_db_connection()
+    print("conn is ", conn)
     if not conn:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
