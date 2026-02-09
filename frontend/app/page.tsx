@@ -10,9 +10,11 @@ export default function Home() {
   const [newSheetId, setNewSheetId] = useState("");
   const [updating, setUpdating] = useState(false);
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
   const fetchSettings = async () => {
     try {
-      const res = await fetch("http://localhost:8000/settings");
+      const res = await fetch(`${API_URL}/settings`);
       const json = await res.json();
       setSheetId(json.sheet_id);
     } catch (error) {
@@ -24,7 +26,7 @@ export default function Home() {
     if (!newSheetId) return;
     setUpdating(true);
     try {
-      await fetch("http://localhost:8000/settings", {
+      await fetch(`${API_URL}/settings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sheet_id: newSheetId }),
@@ -43,7 +45,7 @@ export default function Home() {
 
   const handleWebhookTrigger = async () => {
     try {
-      await fetch("http://localhost:8000/webhook", { method: "POST" });
+      await fetch(`${API_URL}/webhook`, { method: "POST" });
       alert("Sync triggered manually!");
     } catch (error) {
       console.error(error);
@@ -54,7 +56,7 @@ export default function Home() {
 
   const fetchData = async () => {
     try {
-      const res = await fetch("http://localhost:8000/data");
+      const res = await fetch(`${API_URL}/data`);
       // console.log("The result recieved from api is ", res);
 
       const json = await res.json();

@@ -77,17 +77,29 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the live dashboard.
 
-## Testing Real-Time Sync & Dynamic Sheets
+## Deployment Guide
 
-1.  **Syncing a New Sheet**:
-    *   Find another Google Sheet ID (ensure it is shared with your Service Account email).
-    *   Paste the ID into the "Enter new Sheet ID" box on the Dashboard.
-    *   Click **Change Sheet**.
-    *   The app will switch context and load data from the new sheet immediately.
+### 1. Deploying Backend (e.g., Railway/Render)
+The backend needs to run the Python FastAPI server.
 
-2.  **Verifying Real-Time Updates**:
-    *   Open your Google Sheet in a browser.
-    *   Edit a cell.
-    *   Wait ~2-4 seconds.
-    *   The Dashboard table will auto-update!
-    *   (Optional) Click **Trigger Sync Now** for an instant check.
+1.  **Push your code to GitHub**.
+2.  **Create a Project** on [Railway](https://railway.app/) or Render.
+3.  **Connect your GitHub Repo**.
+4.  **Set Environment Variables** in the Railway Dashboard:
+    *   `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`: Your cloud database details.
+    *   `SPREADSHEET_ID`: The ID of your Google Sheet.
+    *   `GOOGLE_CREDENTIALS`: **Open your `credentials.json` file, copy the entire content, and paste it as the value for this variable.**
+    *   `FRONTEND_URL`: `https://your-frontend-app.vercel.app` (Add this *after* deploying frontend).
+5.  Railway will automatically detect the `Procfile` and start the app.
+
+### 2. Deploying Frontend (Vercel)
+The frontend is a Next.js app.
+
+1.  **Go to [Vercel](https://vercel.com/)**.
+2.  **Import your GitHub Project**.
+3.  **Set Environment Variables**:
+    *   `NEXT_PUBLIC_API_URL`: The URL of your deployed Backend (e.g., `https://web-production-xyz.up.railway.app`).
+4.  **Deploy**.
+
+### 3. Final Step
+Once Frontend is deployed, go back to your Backend variables and set `FRONTEND_URL` to your Vercel domain to allow CORS.

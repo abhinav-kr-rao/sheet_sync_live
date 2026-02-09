@@ -1,3 +1,4 @@
+import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from googleapiclient.discovery import build
@@ -42,19 +43,39 @@ class SheetSyncManager:
         self.last_modified_time = None
 
     def _setup_services(self):
-        if not os.path.exists(CREDENTIALS_FILE):
-            print(f"❌ Credentials file '{CREDENTIALS_FILE}' not found.")
-            return False
+        # 1. Try Environment Variable (For Production)
+        google_creds_env = os.getenv("GOOGLE_CREDENTIALS")
 
-        try:
-            self.creds = ServiceAccountCredentials.from_json_keyfile_name(
-                CREDENTIALS_FILE, scope
+        if google_creds_env:
+            try:
+                creds_dict = json.loads(google_creds_env)
+                self.creds = ServiceAccountCredentials.from_json_keyfile_dict(
+                    creds_dict, scope
+                )
+                self.gspread_client = gspread.authorize(self.creds)
+                # self.drive_service = build("drive", "v3", credentials=self.creds) # Unused
+                return True
+            except Exception as e:
+                print(f"❌ Error loading credentials from Env Var: {e}")
+                return False
+
+        # 2. Try Local File (For Development)
+        elif os.path.exists(CREDENTIALS_FILE):
+            try:
+                self.creds = ServiceAccountCredentials.from_json_keyfile_name(
+                    CREDENTIALS_FILE, scope
+                )
+                self.gspread_client = gspread.authorize(self.creds)
+                # self.drive_service = build("drive", "v3", credentials=self.creds) # Unused
+                return True
+            except Exception as e:
+                print(f"❌ Error loading credentials from File: {e}")
+                return False
+
+        else:
+            print(
+                f"❌ No Credentials found! Set GOOGLE_CREDENTIALS env var or place '{CREDENTIALS_FILE}'."
             )
-            self.gspread_client = gspread.authorize(self.creds)
-            self.drive_service = build("drive", "v3", credentials=self.creds)
-            return True
-        except Exception as e:
-            print(f"❌ Error setting up Google Services: {e}")
             return False
 
     def create_db_if_not_exists(self):
