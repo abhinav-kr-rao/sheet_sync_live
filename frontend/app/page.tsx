@@ -47,6 +47,8 @@ export default function Home() {
       alert("Sync triggered manually!");
     } catch (error) {
       console.error(error);
+      console.log("Error in syncing manually", error);
+
     }
   };
 
@@ -64,6 +66,7 @@ export default function Home() {
       setLastUpdated(new Date());
     } catch (error) {
       console.error("Failed to fetch data:", error);
+      console.log("Failed to fetch data:", error);
     } finally {
       setLoading(false);
     }

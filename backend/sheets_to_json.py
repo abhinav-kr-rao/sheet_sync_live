@@ -172,6 +172,8 @@ class SheetSyncManager:
                     sheet = self.gspread_client.open_by_key(self.sheet_id).sheet1
                     raw_data = sheet.get_all_values()
 
+                    # print("Raw data fetched:", raw_data)
+
                     if not raw_data:
                         current_hash = "EMPTY"
                         header, rows = [], []
@@ -186,7 +188,7 @@ class SheetSyncManager:
                         self.last_modified_time is None
                         or current_hash != self.last_hash
                     ):
-                        print(f"🔔 Change detected! Syncing...")
+                        print("Change detected! Syncing...")
                         self.sync_data_to_db(header, rows)
                         self.last_hash = current_hash
                         self.last_modified_time = "SYNCED"  # Set to something not None
@@ -196,14 +198,14 @@ class SheetSyncManager:
 
                 except gspread.exceptions.SpreadsheetNotFound:
                     print(
-                        f"❌ Sheet with ID '{self.sheet_id}' not found. Check ID and permissions."
+                        f"Sheet with ID '{self.sheet_id}' not found. Check ID and permissions."
                     )
                     time.sleep(5)
                 except Exception as e:
-                    print(f"❌ Error fetching sheet data: {e}")
+                    print(f"Error fetching sheet data: {e}")
 
             except Exception as e:
-                print(f"⚠️ Loop Error: {e}")
+                print(f"Loop Error: {e}")
 
             time.sleep(2)  # Poll every 2 seconds
 
@@ -227,7 +229,7 @@ class SheetSyncManager:
     def set_sheet_id(self, new_id):
         if new_id == self.sheet_id:
             return
-        print(f"🔄 Switching to new Sheet ID: {new_id}")
+        print(f"Switching to new Sheet ID: {new_id}")
         self.stop()
         self.sheet_id = new_id
         self.last_modified_time = None  # Reset to force fetch on new sheet
@@ -248,7 +250,7 @@ if __name__ == "__main__":
             while True:
                 time.sleep(1)  # Keep main thread alive
         except KeyboardInterrupt:
-            print("\n🛑 KeyboardInterrupt detected.")
+            print("\nKeyboardInterrupt detected.")
             sync_manager.stop()
             sys.exit(0)
         except Exception as e:
