@@ -162,57 +162,45 @@ class SheetSyncManager:
             return
 
         self.create_db_if_not_exists()
+        self.last_hash = None  # Reset state
 
         while self.running:
             try:
-                # 1. Smart Polling: Check Drive Metadata first
-                # This saves quota and is faster than downloading the whole sheet
+                # 1. Fetch Data Directly (No Drive API Metadata check)
+                # This ensures real-time updates as Drive API modifiedTime has propagation delay
                 try:
-                    file_metadata = (
-                        self.drive_service.files()
-                        .get(fileId=self.sheet_id, fields="modifiedTime, name")
-                        .execute()
-                    )
-                    current_modified_time = file_metadata.get("modifiedTime")
-                    sheet_name = file_metadata.get("name")
-                    print(f"Checking sheet '{sheet_name}' (ID: {self.sheet_id})...")
-                except Exception as e:
+                    sheet = self.gspread_client.open_by_key(self.sheet_id).sheet1
+                    raw_data = sheet.get_all_values()
+
+                    if not raw_data:
+                        current_hash = "EMPTY"
+                        header, rows = [], []
+                    else:
+                        current_hash = str(raw_data)  # Simple string hash
+                        header = raw_data[0]
+                        rows = raw_data[1:]
+
+                    # Check for changes (content based or manual trigger forced reset)
+                    # self.last_modified_time is repurposed as a "Force Sync" flag from webhook
+                    if (
+                        self.last_modified_time is None
+                        or current_hash != self.last_hash
+                    ):
+                        print(f"🔔 Change detected! Syncing...")
+                        self.sync_data_to_db(header, rows)
+                        self.last_hash = current_hash
+                        self.last_modified_time = "SYNCED"  # Set to something not None
+                    else:
+                        # print("   No changes.") # Reduce spam
+                        pass
+
+                except gspread.exceptions.SpreadsheetNotFound:
                     print(
-                        f"❌ Error checking Drive metadata for ID '{self.sheet_id}' (ID might be wrong or permissions issue): {e}"
+                        f"❌ Sheet with ID '{self.sheet_id}' not found. Check ID and permissions."
                     )
                     time.sleep(5)
-                    continue
-
-                if current_modified_time != self.last_modified_time:
-                    print(
-                        f"🔔 Change detected! (Modified: {current_modified_time}) Fetching data..."
-                    )
-
-                    # 2. Fetch Data
-                    try:
-                        sheet = self.gspread_client.open_by_key(self.sheet_id).sheet1
-                        raw_data = sheet.get_all_values()
-
-                        if raw_data:
-                            header = raw_data[0]
-                            rows = raw_data[1:]
-                            self.sync_data_to_db(header, rows)
-                        else:
-                            print("Sheet is empty.")
-                            # Even if empty, we might want to clear the DB table
-                            self.sync_data_to_db([], [])
-
-                        self.last_modified_time = current_modified_time
-
-                    except gspread.exceptions.SpreadsheetNotFound:
-                        print(
-                            f"❌ Sheet with ID '{self.sheet_id}' not found. Check ID and permissions."
-                        )
-                    except Exception as e:
-                        print(f"❌ Error fetching sheet data: {e}")
-
-                else:
-                    print("   No changes.")
+                except Exception as e:
+                    print(f"❌ Error fetching sheet data: {e}")
 
             except Exception as e:
                 print(f"⚠️ Loop Error: {e}")

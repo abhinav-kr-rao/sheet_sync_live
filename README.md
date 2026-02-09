@@ -57,27 +57,37 @@ npm install
 
 ## Running the Application
 
-You need to run **3 separate terminals**:
+## Running the Application
 
-### Terminal 1: Sync Script
-This script fetches data from Google Sheets and syncs it to MySQL every 2 seconds.
+You need to run **2 separate terminals** (Backend API now handles syncing automatically):
+
+### Terminal 1: Backend API
+This starts the server AND the sync process in the background.
 ```bash
 cd backend
-uv run sheets_to_json.py
+uv run FastAPI dev main.py
 ```
 
-### Terminal 2: Backend API
-This serves the data from MySQL to the Frontend.
-```bash
-cd backend
-uv run fastapi dev main.py
-```
-
-### Terminal 3: Frontend
+### Terminal 2: Frontend
 This runs the Next.js UI.
 ```bash
 cd frontend
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the app.
+Open [http://localhost:3000](http://localhost:3000) to view the live dashboard.
+
+## Testing Real-Time Sync & Dynamic Sheets
+
+1.  **Syncing a New Sheet**:
+    *   Find another Google Sheet ID (ensure it is shared with your Service Account email).
+    *   Paste the ID into the "Enter new Sheet ID" box on the Dashboard.
+    *   Click **Change Sheet**.
+    *   The app will switch context and load data from the new sheet immediately.
+
+2.  **Verifying Real-Time Updates**:
+    *   Open your Google Sheet in a browser.
+    *   Edit a cell.
+    *   Wait ~2-4 seconds.
+    *   The Dashboard table will auto-update!
+    *   (Optional) Click **Trigger Sync Now** for an instant check.
