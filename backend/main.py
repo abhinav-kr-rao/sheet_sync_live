@@ -1,9 +1,13 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 import mysql.connector
 from mysql.connector import Error
 import os
 from dotenv import load_dotenv
+from pydantic import BaseModel
+
+# Import the sync manager
+from sheets_to_json import sync_manager
 
 load_dotenv()
 
@@ -17,6 +21,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Start/Stop Sync on App Lifecycle
+@app.on_event("startup")
+def startup_event():
+    # Only start if ID is present, otherwise wait for /settings
+    if sync_manager.sheet_id:
+        sync_manager.start()
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    sync_manager.stop()
+
 
 # Database Configuration
 DB_CONFIG = {
@@ -38,9 +56,43 @@ def get_db_connection():
         return None
 
 
+class SheetSettings(BaseModel):
+    sheet_id: str
+
+
 @app.get("/")
 def read_root():
-    return {"message": "Google Sheets Sync API is running!"}
+    return {
+        "message": "Google Sheets Sync API is running!",
+        "current_sheet_id": sync_manager.sheet_id,
+        "status": "Running" if sync_manager.running else "Stopped",
+    }
+
+
+@app.post("/settings")
+async def update_settings(settings: SheetSettings):
+    """Updates the Sheet ID and restarts sync."""
+    if not settings.sheet_id:
+        raise HTTPException(status_code=400, detail="Sheet ID cannot be empty")
+
+    sync_manager.set_sheet_id(settings.sheet_id)
+    return {"message": "Sheet ID updated", "new_id": settings.sheet_id}
+
+
+@app.get("/settings")
+def get_settings():
+    return {"sheet_id": sync_manager.sheet_id}
+
+
+@app.post("/webhook")
+async def webhook_trigger():
+    """
+    Manual trigger to force a check immediately.
+    Can be called by Google Apps Script or manually.
+    """
+    # Force check by resetting last modified time
+    sync_manager.last_modified_time = None
+    return {"message": "Sync triggered manually"}
 
 
 @app.get("/data")
