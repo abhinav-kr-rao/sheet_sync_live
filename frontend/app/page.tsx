@@ -111,7 +111,7 @@ export default function Home() {
     <main className="min-h-screen p-8 font-sans bg-black text-white">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-purple-600 tracking-tight">
+          <h1 className="text-4xl font-extrabold bg-clip-text text-white tracking-tight">
             SheetSync Live
           </h1>
           <div className="flex items-center gap-4">
