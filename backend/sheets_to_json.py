@@ -143,7 +143,8 @@ class SheetSyncManager:
                 return
 
             cols_def = ", ".join([f"{col} TEXT" for col in safe_headers])
-            create_query = f"CREATE TABLE {table_name} ({cols_def});"
+            # Aiven requires a Primary Key for replication
+            create_query = f"CREATE TABLE {table_name} (id INT AUTO_INCREMENT PRIMARY KEY, {cols_def});"
             cursor.execute(create_query)
 
             # 3. Insert Data
