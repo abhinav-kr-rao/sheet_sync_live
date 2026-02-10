@@ -78,8 +78,9 @@ export default function Home() {
       if (!res.ok) throw new Error("API responded with error");
 
       const json = await res.json();
+      console.log("Fetched Data:", json); // Debug Log
 
-      if (json.data) {
+      if (json.data && Array.isArray(json.data) && json.data.length > 0) {
         setData(json.data);
       } else {
         setData([]);
@@ -104,20 +105,22 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) return <div className="p-10 text-xl">Loading...</div>;
+  if (loading) return <div className="min-h-screen bg-black text-white p-10 text-xl">Loading...</div>;
 
   return (
-    <main className="min-h-screen p-8 font-sans bg-gray-50 text-gray-800">
-      <div className="max-w-6xl mx-auto">
+    <main className="min-h-screen p-8 font-sans bg-black text-white">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-extrabold text-blue-900 tracking-tight">SheetSync Live</h1>
+          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-purple-600 tracking-tight">
+            SheetSync Live
+          </h1>
           <div className="flex items-center gap-4">
-            <div className={`px-4 py-1 rounded-full text-sm font-semibold ${syncStatus === "Running" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+            <div className={`px-4 py-1 rounded-full text-sm font-semibold border ${syncStatus === "Running" ? "bg-green-900/30 text-green-400 border-green-800" : "bg-red-900/30 text-red-400 border-red-800"
               }`}>
               Status: {syncStatus}
             </div>
             {errorMsg && (
-              <div className="px-4 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-600">
+              <div className="px-4 py-1 rounded-full text-sm font-semibold bg-red-900/50 text-red-400 border border-red-800">
                 {errorMsg}
               </div>
             )}
@@ -125,33 +128,33 @@ export default function Home() {
         </div>
 
         {/* Settings Card */}
-        <div className="mb-8 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
+        <div className="mb-8 p-6 bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-zinc-800">
           <div className="flex flex-col md:flex-row gap-4 justify-between items-end md:items-center">
             <div>
-              <p className="text-sm text-gray-500 uppercase tracking-wide font-semibold mb-1">Active Sheet ID</p>
-              <p className="font-mono text-lg bg-gray-100 px-3 py-1 rounded select-all truncate max-w-md">
+              <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">Active Sheet ID</p>
+              <code className="block bg-black px-4 py-3 rounded-lg text-sm text-green-400 font-mono border border-zinc-800 select-all truncate max-w-xl">
                 {sheetId || "Not Set"}
-              </p>
+              </code>
             </div>
 
             <div className="flex gap-2 w-full md:w-auto">
               <input
                 type="text"
                 placeholder="Enter new Sheet ID..."
-                className="border border-gray-300 p-2 rounded-lg flex-grow md:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="bg-black border border-zinc-700 text-white p-2 rounded-lg grow md:w-80 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-zinc-600"
                 value={newSheetId}
                 onChange={(e) => setNewSheetId(e.target.value)}
               />
               <button
                 onClick={handleUpdateSheetId}
                 disabled={updating}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition-all active:scale-95"
               >
                 {updating ? "..." : "Load"}
               </button>
               <button
                 onClick={handleWebhookTrigger}
-                className="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+                className="bg-zinc-800 text-zinc-300 border border-zinc-700 px-4 py-2 rounded-lg hover:bg-zinc-700 font-medium transition-all"
               >
                 ↻ Sync
               </button>
@@ -160,43 +163,43 @@ export default function Home() {
         </div>
 
         {/* Data Table */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-            <h2 className="font-semibold text-gray-700">Live Data</h2>
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+          <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900">
+            <h2 className="font-semibold text-zinc-200">Live Data</h2>
             {lastUpdated && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-zinc-500 font-mono">
                 Updated: {lastUpdated.toLocaleTimeString()}
               </span>
             )}
           </div>
 
           {data.length === 0 ? (
-            <div className="p-10 text-center text-gray-400">
-              <p className="text-lg">No data available.</p>
-              <p className="text-sm mt-2">
-                Verify your Sheet ID and ensure the backend is "Running".
+            <div className="p-16 text-center text-zinc-500">
+              <p className="text-xl font-medium mb-2">No data found</p>
+              <p className="text-sm">
+                Ensure the Google Sheet is not empty and "Share" permissions are set.
               </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-zinc-800">
+                <thead className="bg-black">
                   <tr>
                     {Object.keys(data[0]).map((key) => (
                       <th
                         key={key}
-                        className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                        className="px-6 py-4 text-left text-xs font-semibold text-zinc-400 uppercase tracking-wider"
                       >
                         {key}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
+                <tbody className="bg-zinc-900 divide-y divide-zinc-800">
                   {data.map((row, i) => (
-                    <tr key={i} className="hover:bg-gray-50 transition-colors">
+                    <tr key={i} className="hover:bg-zinc-800/50 transition-colors">
                       {Object.values(row).map((val: any, j) => (
-                        <td key={j} className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-r border-transparent last:border-r-0">
+                        <td key={j} className="px-6 py-4 whitespace-nowrap text-sm text-zinc-300">
                           {val}
                         </td>
                       ))}
