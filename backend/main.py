@@ -16,7 +16,7 @@ load_dotenv()
 app = FastAPI()
 
 # Enable CORS
-origins = ["http://localhost:3000"]
+origins = ["http://localhost:3000", "https://sheet-sync-live.vercel.app/"]
 frontend_url = os.getenv("FRONTEND_URL")
 if frontend_url:
     origins.append(frontend_url)
