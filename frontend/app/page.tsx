@@ -1,5 +1,6 @@
 "use client";
 
+import { log } from "console";
 import { useEffect, useState } from "react";
 
 export default function Home() {
@@ -19,7 +20,7 @@ export default function Home() {
       // Fetch Status and Settings
       const [settingsRes, rootRes] = await Promise.all([
         fetch(`${API_URL}/settings`),
-        fetch(`${API_URL}/`)
+        fetch(`${API_URL}/`),
       ]);
 
       if (settingsRes.ok) {
@@ -75,6 +76,7 @@ export default function Home() {
   const fetchData = async () => {
     try {
       const res = await fetch(`${API_URL}/data`);
+      console.log("res is ", res);
       if (!res.ok) throw new Error("API responded with error");
 
       const json = await res.json();
@@ -101,11 +103,16 @@ export default function Home() {
     const interval = setInterval(() => {
       fetchData();
       fetchSettings(); // Also poll status
-    }, 5000); // Check every 5s
+    }, 15000); // Check every 15s
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) return <div className="min-h-screen bg-black text-white p-10 text-xl">Loading...</div>;
+  if (loading)
+    return (
+      <div className="min-h-screen bg-black text-white p-10 text-xl">
+        Loading...
+      </div>
+    );
 
   return (
     <main className="min-h-screen p-8 font-sans bg-black text-white">
@@ -115,8 +122,13 @@ export default function Home() {
             SheetSync Live
           </h1>
           <div className="flex items-center gap-4">
-            <div className={`px-4 py-1 rounded-full text-sm font-semibold border ${syncStatus === "Running" ? "bg-green-900/30 text-green-400 border-green-800" : "bg-red-900/30 text-red-400 border-red-800"
-              }`}>
+            <div
+              className={`px-4 py-1 rounded-full text-sm font-semibold border ${
+                syncStatus === "Running"
+                  ? "bg-green-900/30 text-green-400 border-green-800"
+                  : "bg-red-900/30 text-red-400 border-red-800"
+              }`}
+            >
               Status: {syncStatus}
             </div>
             {errorMsg && (
@@ -131,7 +143,9 @@ export default function Home() {
         <div className="mb-8 p-6 bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-zinc-800">
           <div className="flex flex-col md:flex-row gap-4 justify-between items-end md:items-center">
             <div>
-              <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">Active Sheet ID</p>
+              <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">
+                Active Sheet ID
+              </p>
               <code className="block bg-black px-4 py-3 rounded-lg text-sm text-green-400 font-mono border border-zinc-800 select-all truncate max-w-xl">
                 {sheetId || "Not Set"}
               </code>
@@ -177,7 +191,8 @@ export default function Home() {
             <div className="p-16 text-center text-zinc-500">
               <p className="text-xl font-medium mb-2">No data found</p>
               <p className="text-sm">
-                Ensure the Google Sheet is not empty and "Share" permissions are set.
+                Ensure the Google Sheet is not empty and "Share" permissions are
+                set.
               </p>
             </div>
           ) : (
@@ -197,9 +212,15 @@ export default function Home() {
                 </thead>
                 <tbody className="bg-zinc-900 divide-y divide-zinc-800">
                   {data.map((row, i) => (
-                    <tr key={i} className="hover:bg-zinc-800/50 transition-colors">
+                    <tr
+                      key={i}
+                      className="hover:bg-zinc-800/50 transition-colors"
+                    >
                       {Object.values(row).map((val: any, j) => (
-                        <td key={j} className="px-6 py-4 whitespace-nowrap text-sm text-zinc-300">
+                        <td
+                          key={j}
+                          className="px-6 py-4 whitespace-nowrap text-sm text-zinc-300"
+                        >
                           {val}
                         </td>
                       ))}

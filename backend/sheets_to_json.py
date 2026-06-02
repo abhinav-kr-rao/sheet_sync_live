@@ -1,14 +1,16 @@
+import hashlib
 import json
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from googleapiclient.discovery import build
 import os
 import sys
-import time
 import threading
+import time
+
+import gspread
 import mysql.connector
-from mysql.connector import Error
 from dotenv import load_dotenv
+from googleapiclient.discovery import build
+from mysql.connector import Error
+from oauth2client.service_account import ServiceAccountCredentials
 
 # Load environment variables
 load_dotenv()
@@ -44,31 +46,78 @@ class SheetSyncManager:
         self.gspread_client = None
         self.last_modified_time = None
 
+    # def _setup_services(self):
+    #     # 1. Try Environment Variable (For Production)
+    #     google_creds_env = os.getenv("GOOGLE_CREDENTIALS")
+
+    #     if google_creds_env:
+    #         try:
+    #             creds_dict = json.loads(google_creds_env)
+    #             self.creds = ServiceAccountCredentials.from_json_keyfile_dict(
+    #                 creds_dict, scope
+    #             )
+    #             self.gspread_client = gspread.authorize(self.creds)
+    #             # self.drive_service = build("drive", "v3", credentials=self.creds) # Unused
+    #             return True
+    #         except Exception as e:
+    #             print(f"❌ Error loading credentials from Env Var: {e}")
+    #             return False
+
+    #     # 2. Try Local File (For Development)
+    #     elif os.path.exists(CREDENTIALS_FILE):
+    #         try:
+    #             self.creds = ServiceAccountCredentials.from_json_keyfile_name(
+    #                 CREDENTIALS_FILE, scope
+    #             )
+    #             self.gspread_client = gspread.authorize(self.creds)
+    #             # self.drive_service = build("drive", "v3", credentials=self.creds) # Unused
+    #             return True
+    #         except Exception as e:
+    #             print(f"❌ Error loading credentials from File: {e}")
+    #             return False
+
+    #     else:
+    #         print(
+    #             f"❌ No Credentials found! Set GOOGLE_CREDENTIALS env var or place '{CREDENTIALS_FILE}'."
+    #         )
+    #         return False
+    #
     def _setup_services(self):
-        # 1. Try Environment Variable (For Production)
+        # 1. Try Environment Variable (For Production / Local Env)
         google_creds_env = os.getenv("GOOGLE_CREDENTIALS")
 
         if google_creds_env:
             try:
                 creds_dict = json.loads(google_creds_env)
+
+                # Fix common deployment string-escaping issues with private keys
+                if "private_key" in creds_dict:
+                    creds_dict["private_key"] = creds_dict["private_key"].replace(
+                        "\\n", "\n"
+                    )
+
                 self.creds = ServiceAccountCredentials.from_json_keyfile_dict(
                     creds_dict, scope
                 )
                 self.gspread_client = gspread.authorize(self.creds)
-                # self.drive_service = build("drive", "v3", credentials=self.creds) # Unused
+                print(
+                    "✅ Successfully authenticated using GOOGLE_CREDENTIALS environment variable."
+                )
                 return True
             except Exception as e:
                 print(f"❌ Error loading credentials from Env Var: {e}")
                 return False
 
-        # 2. Try Local File (For Development)
+        # 2. Try Local File fallback
         elif os.path.exists(CREDENTIALS_FILE):
             try:
                 self.creds = ServiceAccountCredentials.from_json_keyfile_name(
                     CREDENTIALS_FILE, scope
                 )
                 self.gspread_client = gspread.authorize(self.creds)
-                # self.drive_service = build("drive", "v3", credentials=self.creds) # Unused
+                print(
+                    "✅ Successfully authenticated using local credentials.json file."
+                )
                 return True
             except Exception as e:
                 print(f"❌ Error loading credentials from File: {e}")
@@ -86,6 +135,7 @@ class SheetSyncManager:
             conn = mysql.connector.connect(
                 host=DB_CONFIG["host"],
                 user=DB_CONFIG["user"],
+                port=DB_CONFIG["port"],
                 password=DB_CONFIG["password"],
             )
             if conn.is_connected():
@@ -202,22 +252,29 @@ class SheetSyncManager:
                         current_hash = "EMPTY"
                         header, rows = [], []
                     else:
-                        current_hash = str(raw_data)  # Simple string hash
+                        # 1. Serialize to a stable JSON string (sort_keys ensures consistent ordering)
+                        # 2. Encode to bytes
+                        # 3. Generate SHA-256 hex digest
+                        encoded_data = json.dumps(raw_data, sort_keys=True).encode(
+                            "utf-8"
+                        )
+                        current_hash = hashlib.sha256(encoded_data).hexdigest()
+
                         header = raw_data[0]
                         rows = raw_data[1:]
 
-                    # Check for changes (content based or manual trigger forced reset)
-                    # self.last_modified_time is repurposed as a "Force Sync" flag from webhook
+                    # Check for changes using the new SHA-256 hash
                     if (
                         self.last_modified_time is None
                         or current_hash != self.last_hash
                     ):
-                        print("Change detected! Syncing...")
+                        print(
+                            f"Change detected! New Hash: {current_hash[:8]}... Syncing..."
+                        )
                         self.sync_data_to_db(header, rows)
                         self.last_hash = current_hash
-                        self.last_modified_time = "SYNCED"  # Set to something not None
+                        self.last_modified_time = "SYNCED"
                     else:
-                        # print("   No changes.") # Reduce spam
                         pass
 
                 except gspread.exceptions.SpreadsheetNotFound:
@@ -231,7 +288,7 @@ class SheetSyncManager:
             except Exception as e:
                 print(f"Loop Error: {e}")
 
-            time.sleep(2)  # Poll every 2 seconds
+            time.sleep(12)  # Poll every 2 seconds
 
     def start(self):
         if self.running:

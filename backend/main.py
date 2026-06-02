@@ -1,9 +1,10 @@
+import os
+
+import mysql.connector
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-import mysql.connector
 from mysql.connector import Error
-import os
-from dotenv import load_dotenv
 from pydantic import BaseModel
 
 # Import the sync manager
@@ -109,13 +110,13 @@ def get_sheet_data():
     Returns a list of dictionaries (rows).
     """
     conn = get_db_connection()
-    print("conn is ", conn)
+    # print("conn /is ", conn)
     if not conn:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
     try:
         cursor = conn.cursor(dictionary=True)  # Return rows as dicts
-
+        print("Curosr is ", cursor)
         # Check if table exists
         cursor.execute("SHOW TABLES LIKE 'sheet_data'")
         result = cursor.fetchone()
@@ -130,8 +131,9 @@ def get_sheet_data():
     except Error as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if conn and conn.is_connected():
+        if cursor:
             cursor.close()
+        if conn and conn.is_connected():
             conn.close()
 
 
