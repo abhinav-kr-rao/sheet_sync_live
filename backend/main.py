@@ -1,10 +1,11 @@
 import os
+from multiprocessing import pool
 
 import mysql.connector
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from mysql.connector import Error
+from mysql.connector import Error, pooling
 from pydantic import BaseModel
 
 # Import the sync manager
@@ -52,15 +53,32 @@ DB_CONFIG = {
     "ssl_disabled": False,
 }
 
+# implementing connection pooling
+try:
+    db_pool = pooling.MySQLConnectionPool(
+        pool_name="sheets_pool", pool_size=5, pool_reset_session=True, **DB_CONFIG
+    )
+    print("Database connection pool successfully created")
+except Error as e:
+    print("Failed to created db pool")
+    db_pool = None
+
 
 def get_db_connection():
     """Establishes a connection to the MySQL database."""
+    # try:
+    #     conn = mysql.connector.connect(**DB_CONFIG)
+    #     if conn.is_connected():
+    #         return conn
+    # except Error as e:
+    #     print(f"Error connecting to MySQL: {e}")
+    #     return None
+    if not db_pool:
+        return None
     try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        if conn.is_connected():
-            return conn
+        return db_pool.get_connection()
     except Error as e:
-        print(f"Error connecting to MySQL: {e}")
+        print(f"Error getting connection from pool : {e}")
         return None
 
 
@@ -105,6 +123,29 @@ async def webhook_trigger():
 
 @app.get("/data")
 def get_sheet_data():
+    conn = get_db_connection()
+    if not conn:
+        # Instead of a 500 error, return a safe empty state with a warning
+        return {"data": [], "warning": "Database temporarily unreachable"}
+
+    cursor = None
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SHOW TABLES LIKE 'sheet_data'")
+        if not cursor.fetchone():
+            return {"data": []}
+
+        cursor.execute("SELECT * FROM sheet_data")
+        return {"data": cursor.fetchall()}
+    except Error as e:
+        print(f"Database error during fetch: {e}")
+        return {"data": [], "warning": "Failed to read database"}
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()  # This actually just returns it to the pool!
+    # def get_sheet_data():
     """
     Fetches all data from the 'sheet_data' table.
     Returns a list of dictionaries (rows).

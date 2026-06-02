@@ -1,6 +1,5 @@
 "use client";
 
-import { log } from "console";
 import { useEffect, useState } from "react";
 
 export default function Home() {
@@ -73,30 +72,69 @@ export default function Home() {
     }
   };
 
+  // const fetchData = async () => {
+  //   try {
+  //     const res = await fetch(`${API_URL}/data`);
+  //     console.log("res is ", res);
+  //     if (!res.ok) throw new Error("API responded with error");
+
+  //     const json = await res.json();
+  //     console.log("Fetched Data:", json); // Debug Log
+
+  //     if (json.data && Array.isArray(json.data) && json.data.length > 0) {
+  //       setData(json.data);
+  //     } else {
+  //       setData([]);
+  //     }
+  //     setLastUpdated(new Date());
+  //     setErrorMsg(null);
+  //   } catch (error) {
+  //     console.error("Failed to fetch data:", error);
+  //     // Don't overwrite errorMsg if it's already set to "Unreachable"
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const fetchData = async () => {
     try {
       const res = await fetch(`${API_URL}/data`);
-      console.log("res is ", res);
-      if (!res.ok) throw new Error("API responded with error");
+
+      // If server is restarting, fail gracefully without throwing a hard error
+      if (!res.ok) {
+        console.warn(`Backend returned ${res.status}. Retrying next cycle...`);
+        setSyncStatus("API Error");
+        return;
+      }
 
       const json = await res.json();
-      console.log("Fetched Data:", json); // Debug Log
 
-      if (json.data && Array.isArray(json.data) && json.data.length > 0) {
-        setData(json.data);
+      // Handle the new safe backend response
+      if (json.warning) {
+        setErrorMsg(json.warning);
       } else {
-        setData([]);
+        setErrorMsg(null);
       }
+
+      if (json.data && Array.isArray(json.data)) {
+        setData(json.data);
+      }
+
       setLastUpdated(new Date());
-      setErrorMsg(null);
+      if (syncStatus === "API Error" || syncStatus === "Unreachable") {
+        setSyncStatus("Running"); // Recovered!
+      }
     } catch (error) {
-      console.error("Failed to fetch data:", error);
-      // Don't overwrite errorMsg if it's already set to "Unreachable"
+      // This catches the "NetworkError" when FastAPI is restarting
+      console.warn(
+        "Network Error: Backend unreachable. Waiting for reconnect...",
+        error,
+      );
+      setSyncStatus("Unreachable");
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchSettings();
     fetchData();
